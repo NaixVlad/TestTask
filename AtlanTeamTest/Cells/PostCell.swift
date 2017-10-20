@@ -8,13 +8,14 @@
 
 import UIKit
 
-protocol PostCellDelegate {
+protocol PostCellDelegate: class {
     func submitPostCellAtIndexPath(_ indexPath: IndexPath)
 }
 
-class PostCell: CardCell, UITextFieldDelegate {
+class PostCell: CardCell, UITextFieldDelegate  {
     
-    var delegate: PostCellDelegate!
+    weak var delegate: PostCellDelegate?
+
     var indexPath: IndexPath!
     
     @IBOutlet weak var titleLabel: UILabel!
@@ -25,8 +26,10 @@ class PostCell: CardCell, UITextFieldDelegate {
     @IBOutlet weak var submitButton: UIButton!
     @IBOutlet weak var postBodyLabel: UILabel!
     
+    
     @IBAction func submitButtonAction(_ sender: UIButton) {
-        self.delegate?.submitPostCellAtIndexPath(indexPath)
+
+        self.delegate?.submitPostCellAtIndexPath(self.indexPath)
         
     }
     

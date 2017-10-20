@@ -23,7 +23,6 @@ extension RawRepresentable where RawValue == String {
 
 
 
-
 protocol SerializationValue {}
 
 extension Bool: SerializationValue {}

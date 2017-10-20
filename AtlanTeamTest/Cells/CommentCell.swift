@@ -8,13 +8,13 @@
 
 import UIKit
 
-protocol CommentCellDelegate {
+protocol CommentCellDelegate: class {
     func submitCommentCellAtIndexPath(_ indexPath: IndexPath)
 }
 
 class CommentCell: CardCell, UITextFieldDelegate {
     
-    var delegate: CommentCellDelegate!
+    weak var delegate: CommentCellDelegate?
     var indexPath: IndexPath!
     
     @IBOutlet weak var titleLabel: UILabel!
@@ -26,7 +26,9 @@ class CommentCell: CardCell, UITextFieldDelegate {
     @IBOutlet weak var bodyLabel: UILabel!
     
     @IBAction func submitButtonAction(_ sender: UIButton) {
+
         self.delegate?.submitCommentCellAtIndexPath(indexPath)
+        
     }
     
     override func awakeFromNib() {

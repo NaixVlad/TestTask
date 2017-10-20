@@ -18,7 +18,7 @@ extension Array: SerializationObject {}
 
 protocol ServerResource {
     associatedtype Model
-    var url: URL {get}
+    var url: URL { get }
     var methodPath: String { get }
     func makeSerialization<T: SerializationObject>(serialization: T) -> Model
 }

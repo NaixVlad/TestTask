@@ -14,13 +14,13 @@ private let resultCellIdentifier = "ResultCell"
 private let photoCellIdentifier = "PhotoCell"
 private let defaultCellIdentifier = "Cell"
 
-class CardsViewController: UIViewController {
+class CardsViewController: UIViewController, UIGestureRecognizerDelegate {
 
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var swipeTipImageView: UIImageView!
     @IBOutlet weak var activityIndicatorView: UIActivityIndicatorView!
     
-    private var numberOfItems = 2
+    private var numberOfItems = 0
     private let cardsTitles = ["Посты", "Комментарии", "Случайное задание", "Пользователи", "Фото"]
     private let sectionInsets = UIEdgeInsets(top: 100.0, left: 20.0, bottom: 100.0, right: 20.0)
     
@@ -34,7 +34,12 @@ class CardsViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.hideKeyboardWhenTappedAround()
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(sender:)))
+        tap.delegate = self
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+        
         
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(notification:)), name: NSNotification.Name.UIKeyboardWillShow, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(notification:)), name: NSNotification.Name.UIKeyboardWillHide, object: nil)
@@ -46,29 +51,22 @@ class CardsViewController: UIViewController {
         
         self.prepareData { (succes) in
             
-            UIApplication.shared.isNetworkActivityIndicatorVisible = true
-            
             DispatchQueue.main.async {
                
                 if succes {
-                    UIApplication.shared.isNetworkActivityIndicatorVisible = false
-                    
                     self.swipeTipImageView.isHidden = false
                     self.collectionView.isHidden = false
 
                     self.hideTipAnimation()
                     
-                    self.numberOfItems = 5
+                    self.numberOfItems = self.cardsTitles.count
                     self.collectionView?.reloadData()
                 }
 
                 self.activityIndicatorView.stopAnimating()
                 
-                
             }
-            
         }
-        
         
     }
     
@@ -78,18 +76,36 @@ class CardsViewController: UIViewController {
     
     
     //MARK: - Animation
+    
     func hideTipAnimation() {
         UIView.animate(withDuration: 0.5, delay: 2, options: .curveLinear, animations: {
             self.swipeTipImageView.alpha = 0
         }, completion: nil)
+    }
+    
+    //MARK: - Gestures
+    
+    @objc func handleTap(sender: UITapGestureRecognizer) {
+    
+        view.endEditing(true)
+        
+        
+    }
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        if touch.view is UIButton {
+            let button = touch.view as! UIButton
+            button.sendActions(for: .touchUpInside)
+        }
+        
+        return true
+
     }
 
     //MARK: - Networking
     
     
     func prepareData(completion: @escaping (Bool) -> ()) {
-        
-        
         
         let randomIdentifier = Int.random(range: 1...200)
         self.fetchTodoWithId(randomIdentifier, completion: { (success) in
@@ -109,7 +125,6 @@ class CardsViewController: UIViewController {
                     guard success == true else {
                         
                         completion(false)
-                        
                         return
                     }
                     completion(true)
@@ -211,7 +226,6 @@ class CardsViewController: UIViewController {
         request = todoRequest
         todoRequest.load { [weak self] (task: Task?) in
             
-            
             guard let task = task else {
                 completion(false)
                 print("Fetch task error")
@@ -243,7 +257,10 @@ class CardsViewController: UIViewController {
     
     func setupOffsetForCollectionView(y: CGFloat) {
         let offset = CGPoint(x: collectionView.contentOffset.x, y: y)
-        collectionView.contentOffset = offset
+        
+        UIView.animate(withDuration: 0.1, delay: 0, options: .curveLinear, animations: {
+            self.collectionView.contentOffset = offset
+        })
     }
 }
     
@@ -266,13 +283,7 @@ extension CardsViewController: UICollectionViewDataSource {
             cell.delegate = self
             cell.indexPath = indexPath
             
-            let inputTextField = cell.inputTextField
-            let bottomLine = CALayer()
-            bottomLine.frame = CGRect(x: 0.0, y: (inputTextField?.frame.height)! - 1,
-                                      width: (inputTextField?.frame.width)!, height: 1.0)
-            bottomLine.backgroundColor = UIColor.aquamarineDark.cgColor
-            inputTextField?.layer.addSublayer(bottomLine)
-
+            setupTextField(cell.inputTextField)
             
             
             return cell
@@ -284,12 +295,7 @@ extension CardsViewController: UICollectionViewDataSource {
             cell.delegate = self
             cell.indexPath = indexPath
             
-            let inputTextField = cell.inputTextField
-            let bottomLine = CALayer()
-            bottomLine.frame = CGRect(x: 0.0, y: (inputTextField?.frame.height)! - 1,
-                                      width: (inputTextField?.frame.width)!, height: 1.0)
-            bottomLine.backgroundColor = UIColor.aquamarineDark.cgColor
-            inputTextField?.layer.addSublayer(bottomLine)
+             setupTextField(cell.inputTextField)
             
             
             return cell
@@ -331,6 +337,16 @@ extension CardsViewController: UICollectionViewDataSource {
         }
         
     }
+    
+    func setupTextField(_ textField: UITextField) {
+        
+        let bottomLine = CALayer()
+        bottomLine.frame = CGRect(x: 0.0, y: textField.frame.height - 1,
+                                  width: textField.frame.width, height: 1.0)
+        bottomLine.backgroundColor = UIColor.aquamarineDark.cgColor
+        textField.layer.addSublayer(bottomLine)
+        
+    }
 
 }
 
@@ -358,17 +374,19 @@ extension CardsViewController: UICollectionViewDelegateFlowLayout {
     }
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+
         view.endEditing(true)
+
     }
     
     
     func itemSize() -> CGSize {
         
-        let paddingSpace = sectionInsets.left + sectionInsets.right
-        let availableWidth = view.frame.width - paddingSpace
-        let availableHeight = view.frame.height - sectionInsets.top - sectionInsets.bottom
-
+        let availableWidth = view.frame.width - (sectionInsets.left + sectionInsets.right)
         
+        let height = collectionView.bounds.height
+        let availableHeight = height - (sectionInsets.top + sectionInsets.bottom)
+
         return CGSize(width: availableWidth, height: availableHeight)
         
     }
@@ -377,6 +395,7 @@ extension CardsViewController: UICollectionViewDelegateFlowLayout {
 
 
 extension CardsViewController: PostCellDelegate {
+    
     func submitPostCellAtIndexPath(_ indexPath: IndexPath) {
         let cell = collectionView.cellForItem(at: indexPath) as! PostCell
         let idString = cell.inputTextField.text ?? ""
@@ -384,22 +403,26 @@ extension CardsViewController: PostCellDelegate {
         if let id = Int(idString) {
             
             if 1...100 ~= id {
+                
+                UIApplication.shared.isNetworkActivityIndicatorVisible = true
+                
                 fetchPostWithId(id, completion: { (success) in
+                    
+                    DispatchQueue.main.async {
+                    UIApplication.shared.isNetworkActivityIndicatorVisible = false
                     cell.postTitleLabel.text = self.post?.title
                     cell.postBodyLabel.text = self.post?.body
+                    }
                     
                 })
                 
             } else {
+                
                 cell.postTitleLabel.text  = "Index out of range, введите индекс от 1 до 100"
                 cell.postBodyLabel.text = "Введите значение от 1 до 100"
+                
             }
-            self.view.endEditing(true)
-            
-            
         }
-        
-        
     }
     
 }
@@ -413,26 +436,28 @@ extension CardsViewController: CommentCellDelegate {
         if let id = Int(idString) {
             
             if 1...500 ~= id {
+                
+                UIApplication.shared.isNetworkActivityIndicatorVisible = true
+                
                 fetchCommentWithId(id, completion: { (success) in
                     
+                    DispatchQueue.main.async {
+                    UIApplication.shared.isNetworkActivityIndicatorVisible = false
                     cell.nameLabel.text = self.comment?.name
                     cell.emailLabel.text = self.comment?.email
                     cell.bodyLabel.text = self.comment?.body
+                    }
                     
-                    self.view.endEditing(true)
                 })
                 
             } else {
+                
                 cell.nameLabel.text = "Index out of range"
                 cell.emailLabel.text = "Введите значение от 1 до 500"
                 cell.bodyLabel.text = ""
                 
             }
-            
-            self.view.endEditing(true)
         }
-        
-        
     }
     
 }
